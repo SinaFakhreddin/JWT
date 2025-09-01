@@ -4,6 +4,9 @@ import {generateAccessToken, generateRefreshToken,} from "../utils/token.js";
 import jwt from "jsonwebtoken";
 import {sendOTPSMS} from "../services/smsServices.js";
 import bcrypt from "bcrypt";
+import Otp from "../models/Otp.js";
+import OTPSchema from "../models/Otp.js";
+import mongoose from "mongoose";
 
 
 const generateOTP = () => {
@@ -22,11 +25,15 @@ export const otpRequest = async (req, res) => {
             user = new User({ phoneNumber });
         }
         const otp = generateOTP();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+        const savedOtpDb = await OTPSchema.create({phone:phoneNumber , otp: hashedOtp})
          // 🔒 hash OTP
-        user.otp = await bcrypt.hash(otp, 10);
+        user.otp = hashedOtp
         user.otpExpires = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
         await user.save();
         const otpSent = await sendOTPSMS(phoneNumber, otp);
+        const timeLeft = Math.floor((user.otpExpires - new Date()) / 1000);
+
         if (!otpSent) {
             await User.deleteOne({ otpSent });
             return res.status(500).json({ error: 'Failed to send OTP email' });
@@ -34,7 +41,8 @@ export const otpRequest = async (req, res) => {
             res.status(201).json({
                 message: 'OTP sent to phone number. Please verify to complete registration.',
                 phoneNumber,
-                expiredAt:user.otpExpires
+                expiredAt:timeLeft,
+                transActionId:savedOtpDb._id.toString()
             });
         }
     } catch (error) {
@@ -50,7 +58,7 @@ export const verifyOtp = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (user.otp !== otp || Date.now() > user.otpExpires) {
-        return res.status(400).json({ message: "Invalid or expired OTP" });
+        return res.status(400).json({ message: "Invalid or expired OTP"});
     }
 
     user.otp = null;
@@ -63,7 +71,6 @@ export const verifyOtp = async (req, res) => {
     console.log("Token",accessToken , refreshToken)
     // // ذخیره refreshToken در DB
     await new Token({ userId: user._id, token: refreshToken.token }).save();
-
     res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true });
     res.status(200).json({accessToken });
 
@@ -90,6 +97,36 @@ export const logout = async (req, res) => {
     res.clearCookie("refreshToken");
     res.sendStatus(204);
 };
+
+
+
+
+// 3. Check OTP status (for refresh)
+export const checkOtpStatus =  async (req, res) => {
+    console.log("req",req.params.transactionId)
+    const otp = await OTPSchema.findById(req.params.transactionId);
+    console.log("OTP",otp)
+    if (!otp) return res.status(404).json({ step: "login" });
+
+    const now = new Date();
+    const timeLeft = Math.max(0, Math.floor((otp.expiredAt - now) / 1000)); // seconds
+
+    if (otp.verified) {
+        return res.json({ step: "done" });
+    }
+
+    if (timeLeft === 0) {
+        return res.json({ step: "login" });
+    }
+
+    return res.json({ step: "otp", timeLeft });
+}
+
+
+
+
+
+
 
 
 export const resendOtp = async (req , res)=>{
