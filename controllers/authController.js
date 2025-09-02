@@ -17,8 +17,8 @@ const generateOTP = () => {
 
 export const otpRequest = async (req, res) => {
     try {
+
         const { phoneNumber } = req.body;
-        console.log("req",phoneNumber)
         if (!phoneNumber) return res.status(400).json({ message: "Phone is required" });
         let user = await User.findOne({ phoneNumber });
         if (!user) {
@@ -151,8 +151,11 @@ export const resendOtp = async (req , res)=>{
 
             // Generate new OTP
             const newOtp = generateOTP();
+            const hashedOtp = await bcrypt.hash(newOtp, 10);
+            const savedOtpDb = await OTPSchema.create({phone:phoneNumber , otp: hashedOtp})
             user.otp = newOtp;
             user.otpExpires = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
+            const timeLeft = Math.floor((user.otpExpires - new Date()) / 1000);
             await user.save();
 
             const otpSent = await sendOTPSMS(phoneNumber, newOtp);
@@ -163,7 +166,8 @@ export const resendOtp = async (req , res)=>{
                 res.status(201).json({
                     message: 'OTP sent to phone number. Please verify to complete registration.',
                     phoneNumber,
-                    expiredAt:user.otpExpires
+                    expiredAt:timeLeft,
+                    transActionId:savedOtpDb._id.toString()
                 });
             }
 

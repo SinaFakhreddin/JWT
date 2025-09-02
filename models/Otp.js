@@ -17,9 +17,12 @@ import bcrypt from "bcrypt";
     },
      expiredAt:{
         type:Date,
-         default:new Date(Date.now() + 2 * 60 * 1000)
+         required:true,
+         default: () => Date.now() + 2 * 60 * 1000
      }
 });
+
+
 
 
 OTPSchema.pre('save', async function(next) {
@@ -27,6 +30,8 @@ OTPSchema.pre('save', async function(next) {
     this.otp = await bcrypt.hash(this.otp, 12);
     next();
 });
+
+
 
 OTPSchema.methods.correctOTP = async function(candidateOTP, userOTP) {
     return await bcrypt.compare(candidateOTP, userOTP);

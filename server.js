@@ -20,7 +20,7 @@ connectDB().then(()=>console.log("Connected to DB."))
 
 app.use(helmet());
 app.use(cors({
-    origin: "http://localhost:3000", // frontend URL
+    origin: "http://localhost:3001", // frontend URL
     credentials: true,
 }));
 app.use(express.json());
