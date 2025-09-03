@@ -20,7 +20,7 @@ connectDB().then(()=>console.log("Connected to DB."))
 
 app.use(helmet());
 app.use(cors({
-    origin: "http://localhost:3001", // frontend URL
+    origin: "http://localhost:3000", // frontend URL
     credentials: true,
 }));
 app.use(express.json());
@@ -41,6 +41,7 @@ app.use("/api/auth", authRoutes);
 // Protected route
 app.get("/profile", authenticateToken, (req, res) => {
     res.json({ message: `Welcome ${req.user.username}` });
+
 });
 
 app.listen(5000, () => console.log("Fucking Server is running on port 5000"));
