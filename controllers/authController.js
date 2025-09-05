@@ -144,6 +144,9 @@ export const otpRequest = async (req, res) => {
 
 // ✅ verifyOtp (فقط چک می‌کنه otp = "1234")
 export const verifyOtp = async (req, res) => {
+
+    console.log("FUCKING DISASTER")
+
     try {
         const { phoneNumber, otp } = req.body;
 

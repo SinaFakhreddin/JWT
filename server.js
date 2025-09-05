@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import cors from "cors"
 import dotenv from "dotenv";
 import {dropStaleIndex} from "./controllers/dbControllers.js";
+import productsRoutes from "./routes/productsRoutes.js";
 
 
 dotenv.config()
@@ -36,6 +37,8 @@ app.use("/auth" , limiter)
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/products", productsRoutes)
+
 
 
 // Protected route
